@@ -99,6 +99,68 @@ export class App extends Component {
 		});
 	}
 
+	connect() {
+	   // 创建websocket
+		var ws = new WebSocket("ws://socket.zmiti.com:7272");
+		this.ws = ws;
+		var s = this;
+		this.client_list =  this.client_list || {};
+	   ws.onopen = this.onopen.bind(this);
+	   // 当有消息时根据消息类型显示不同信息
+	   ws.onclose = function() {
+	      console.log("连接关闭，定时重连");
+	      s.connect();
+	   };
+	   ws.onerror = function() {
+	      console.log("出现错误");
+	   };
+	   ws.onmessage = function(e){
+	   		console.log(e.data);
+	   		 var data = JSON.parse(e.data);
+               console.log(data);
+                switch(data['type']){
+                    // 服务端ping客户端
+                    case 'ping':
+                        console.log(data);
+                        ws.send('{"type":"pong"}');
+                        break;
+                    // 登录 更新用户列表
+                    case 'login':
+                        //{"type":"login","client_id":xxx,"client_name":"xxx","client_list":"[...]","time":"xxx"}
+                         if(data['client_list'])
+			                {
+			                    s.client_list = data['client_list'];
+			                }
+			                else
+			                {
+			                    s.client_list[data['client_id']] = data['client_name']; 
+			                }
+                        console.log(data['client_name']+"登录成功123");
+                        break;
+                    // 发言
+                    case 'say':
+                      
+                        break;
+                    // 用户退出 更新用户列表
+                    case 'logout':
+                        //{"type":"logout","client_id":xxx,"time":"xxx"}
+                        //console.log(data['client_name']+"退出了");
+                        alert(data['client_name'] + 'logout')
+                       // delete client_list[data['from_client_id']];
+                }
+	   }
+	}
+
+    onopen(){
+        // 登录
+        var login_data = {"type":"login","client_name":'zmiti',"room_id":"1"};
+        console.log("websocket握手成功，发送登录数据:"+JSON.stringify(login_data));
+
+
+        this.ws.send(JSON.stringify(login_data));
+
+    }
+
 	wxConfig(title,desc,img,appId='wxfacf4a639d9e3bcc',worksid){
 		   var durl = location.href.split('#')[0]; //window.location;
 		        var code_durl = encodeURIComponent(durl);
@@ -157,7 +219,21 @@ export class App extends Component {
 
 			    	wx.ready(()=>{
 
+			    		wx.getLocation({
+						    type: 'wgs84', // 默认为wgs84的gps坐标，如果要返回直接给openLocation用的火星坐标，可传入'gcj02'
+						    success: function (res) {
+						        var latitude = res.latitude; // 纬度，浮点数，范围为90 ~ -90
+						        var longitude = res.longitude; // 经度，浮点数，范围为180 ~ -180。
+						        var speed = res.speed; // 速度，以米/每秒计
+						        var accuracy = res.accuracy; // 位置精度
+						       /* $.ajax({
+						        	url:`http://restapi.amap.com/v3/geocode/regeo?
+						        	key=10df4af5d9266f83b404c007534f0001&
+						        	location=${longitude},${latitude}&poitype=&radius=100&extensions=base&batch=false&roadlevel=1`
+						        })*/
 
+						    }
+						});
 			    			 		//朋友圈
 	                    wx.onMenuShareTimeline({
 	                        title: title, // 分享标题
@@ -226,6 +302,8 @@ export class App extends Component {
 		        //var localId = res.localId; // 返回音频的本地ID
 		    }
 		});
+
+		this.connect();
 	}
 
 	clearRender(){
