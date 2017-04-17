@@ -261,11 +261,12 @@
 							} else {
 								s.client_list[data['client_id']] = data['client_name'];
 							}
-							console.log(data['client_name'] + "登录成功123");
+
+							ws.send(JSON.stringify({ type: 'say', content: "mb", from_client_name: "zmiti", from_client_id: "zmiti", time: '11-11' }));
 							break;
 						// 发言
 						case 'say':
-
+							s.say(data['from_client_id'], data['from_client_name'], data['content'], data['time']);
 							break;
 						// 用户退出 更新用户列表
 						case 'logout':
@@ -275,6 +276,11 @@
 						// delete client_list[data['from_client_id']];
 					}
 				};
+			}
+		}, {
+			key: 'say',
+			value: function say(from_client_id, from_client_name, content, time) {
+				console.log('from-client-id: ' + from_client_id + " from-client-name: " + from_client_name + ' 说 ：' + content + ' 时间 ' + time);
 			}
 		}, {
 			key: 'onopen',

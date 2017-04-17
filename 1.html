@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title></title>
+</head>
+<body>
+
+  <script src='./assets/js/socket.io.js'></script>
+  <script>
+    var socket = io('http://socket.zmiti.com:2120');
+
+    /*socket.on('connect', function(){
+      socket.emit('login', opt.uid||'');
+    });*/
+    // 后端推送来消息时
+    var s = this;
+    socket.on('new_msg', function(msg){
+        msg = msg.replace(/&quot;/g,"\"");
+        var data = JSON.parse(msg);
+        console.log(data);
+        
+        
+    });
+  </script>
+</body>
+</html>

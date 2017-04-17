@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title></title>
+</head>
+<body>
+
+  <button onclick="send()">发送</button>
+  <script src='./assets/js/socket.io.js'></script>
+  <script src='http://common.cnblogs.com/script/jquery.js'></script>
+  <script>
+
+    /*socket.on('connect', function(){
+      socket.emit('login', opt.uid||'');
+    });*/
+    // 后端推送来消息时
+   	
+   	function send(){
+   		var opt = {
+   			content:{name:'zmiti'}
+   		}
+   		$.ajax({
+			url:'http://api.zmiti.com/v2/msg/send_msg/',
+			data:{
+				type:'publish',
+				content:JSON.stringify(opt.content),
+				to:opt.to||''
+			},
+			success(data){
+					if(data.getret === 1300){
+						//登录超时
+						window.location.href= window.loginUrl;
+					}
+			}
+		})
+   	}
+  </script>
+
+</body>
+</html>
