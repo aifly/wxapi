@@ -231,11 +231,10 @@ export class App extends Component {
 						        var longitude = res.longitude; // 经度，浮点数，范围为180 ~ -180。
 						        var speed = res.speed; // 速度，以米/每秒计
 						        var accuracy = res.accuracy; // 位置精度
-						       /* $.ajax({
-						        	url:`http://restapi.amap.com/v3/geocode/regeo?
-						        	key=10df4af5d9266f83b404c007534f0001&
-						        	location=${longitude},${latitude}&poitype=&radius=100&extensions=base&batch=false&roadlevel=1`
-						        })*/
+						        wx.posData = {
+						        	longitude,
+						        	latitude
+						        } 
 
 						    }
 						});
@@ -280,11 +279,7 @@ export class App extends Component {
  
 	isWeiXin(){
 	    var ua = window.navigator.userAgent.toLowerCase();
-	    if(ua.match(/MicroMessenger/i) == 'micromessenger'){
-	        return true;
-	    }else{
-	        return false;
-	    }
+	    return ua.match(/MicroMessenger/i) == 'micromessenger';
     }
 
     getQueryString(name) {
@@ -308,7 +303,99 @@ export class App extends Component {
 		    }
 		});
 
-		this.connect();
+
+		$.ajax({
+			url:'http://api.zmiti.com/v2/weixin/getwxuserinfo/',
+			data:{
+				code:s.getQueryString('code'),
+				wxappid:appData.wxappid,
+				wxappsecret:appData.wxappsecret
+			},
+			error(){
+				alert('error')
+			},
+			success(dt){
+
+				
+
+				if(dt.getret === 0){
+					
+					/*$.ajax({
+						url:'http://api.zmiti.com/v2/works/update_pvnum/',
+						data:{
+							worksid:s.worksid
+						},
+						success(data){
+							if(data.getret === 0){
+								console.log(data);
+							}
+						}
+					});
+*/
+
+				//	s.defaultName = dt.userinfo.nickname || data.username || '智媒体';
+
+					localStorage.setItem('nickname',dt.userinfo.nickname );
+					localStorage.setItem('headimgurl',dt.userinfo.headimgurl);
+
+					if(wx.posData.longitude){
+							$.ajax({
+					        	url:`http://restapi.amap.com/v3/geocode/regeo?key=10df4af5d9266f83b404c007534f0001&location=${wx.posData.longitude},${wx.posData.latitude}&poitype=&radius=100&extensions=base&batch=false&roadlevel=1`+'',
+								type:'get',
+								success(data){
+									if(data.status === '1' && data.infocode === '10000'){
+										var addressComponent = data.regeocode.addressComponent;
+										var opt = {
+									   		type:'map',
+									   		address:(addressComponent.city[0]||addressComponent.province)+addressComponent.district,
+									   		pos:[wx.posData.longitude,wx.posData.latitude],
+									   		nickname:dt.userinfo.nickname,
+									   		headimgurl:dt.userinfo.headimgurl
+									   	}
+								   		$.ajax({
+											url:'http://api.zmiti.com/v2/msg/send_msg/',
+											data:{
+												type:'publish',
+												content:JSON.stringify(opt),
+												to:opt.to||''
+											},
+											success(data){
+												//console.log(data);
+											}
+										})
+									}
+								}						        	
+					        })
+					}
+					 
+				}
+				else{
+					if(s.isWeiXin() ){
+						$.ajax({
+							url:'http://api.zmiti.com/v2/weixin/getoauthurl/',
+							data:{
+								redirect_uri:window.location.href.split('?')[0],
+								scope:'snsapi_userinfo',
+								state:new Date().getTime()+''
+							},
+							error(){
+								alert('error');
+							},
+							success(dt){
+								alert(dt.getret);
+								if(dt.getret === 0){
+									window.location.href =  dt.url;
+								}
+							}
+						})
+					}
+					else{
+						alert('请在微信中打开');
+					}
+				}
+			}
+		});
+		//this.connect();
 	}
 
 	clearRender(){
