@@ -373,16 +373,17 @@ export class App extends Component {
 					if(s.isWeiXin() ){
 						$.ajax({
 							url:'http://api.zmiti.com/v2/weixin/getoauthurl/',
+							type:"post",
 							data:{
 								redirect_uri:window.location.href.split('?')[0],
 								scope:'snsapi_userinfo',
+								worksid:'9170682890',
 								state:new Date().getTime()+''
 							},
 							error(){
 								alert('error');
 							},
 							success(dt){
-								alert(dt.getret);
 								if(dt.getret === 0){
 									window.location.href =  dt.url;
 								}
