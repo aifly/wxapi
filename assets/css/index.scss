@@ -32,6 +32,11 @@ input, textarea {
 }
 $viewW:640px;
 .zmiti-main-ui{
+
+  opacity:1;
+  &.show{
+    opacity:1;  
+  }
   background: #ebebeb;
 
   

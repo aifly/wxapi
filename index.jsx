@@ -12,13 +12,14 @@ export class App extends Component {
 		super(props);
 		this.state = {
 			msg:'等待录音……',
-			audioSrc:''
+			audioSrc:'',
+			showUI:true
 		}
 		
 	}
 	render() {
 		return (
-			<div className='zmiti-main-ui'>
+			<div className={'zmiti-main-ui '+(this.state.showUI?' show':'')}>
 				<div className='zmiti-msg'>{this.state.msg}</div>
 				<div className='zmiti-msg'>{this.state.audioSrc}</div>
 				<section className='zmiti-btn' onTouchTap={this.startRecord.bind(this)}>开始录音</section>
@@ -166,17 +167,47 @@ export class App extends Component {
 
     }
 
-	wxConfig(title,desc,img,appId='wxfacf4a639d9e3bcc',worksid){
+    getPos(nickname,headimgurl){
+    	 $.ajax({
+        	url:`http://restapi.amap.com/v3/geocode/regeo?key=10df4af5d9266f83b404c007534f0001&location=${wx.posData.longitude},${wx.posData.latitude}&poitype=&radius=100&extensions=base&batch=false&roadlevel=1`+'',
+			type:'get',
+			success(data){
+
+				if(data.status === '1' && data.infocode === '10000'){
+					
+					var addressComponent = data.regeocode.addressComponent;
+					var opt = {
+				   		type:'map',
+				   		address:(addressComponent.city[0]||addressComponent.province)+addressComponent.district,
+				   		pos:[wx.posData.longitude,wx.posData.latitude],
+				   		nickname:nickname,
+				   		headimgurl:headimgurl
+				   	}
+			   		$.ajax({
+						url:'http://api.zmiti.com/v2/msg/send_msg/',
+						data:{
+							type:'publish',
+							content:JSON.stringify(opt),
+							to:opt.to||''
+						},
+						success(data){
+							s.state.showUI = true;
+							s.forceUpdate();
+							//console.log(data);
+						}
+					})
+				}
+			}						        	
+        })
+    }
+
+	wxConfig(title,desc,img,appId='wxfacf4a639d9e3bcc',worksid='9170682890'){
+			var s = this;
 		   var durl = location.href.split('#')[0]; //window.location;
 		        var code_durl = encodeURIComponent(durl);
 			$.ajax({
 				type:'get',
-				url: "http://api.zmiti.com/weixin/jssdk.php",
-				data:{
-					type:'signature',
-					durl:durl,
-					worksid:worksid
-				},
+				url: "http://api.zmiti.com/weixin/jssdk.php?type=signature&durl="+code_durl+"&worksid="+worksid,
 				dataType:'jsonp',
 				jsonp: "callback",
 			    jsonpCallback: "jsonFlickrFeed",
@@ -234,8 +265,11 @@ export class App extends Component {
 						        wx.posData = {
 						        	longitude,
 						        	latitude
-						        } 
-
+						        };
+						        if(s.nickname || s.headimgurl){
+						        	s.getPos(s.nickname,s.headimgurl);
+						        }
+						       
 						    }
 						});
 			    			 		//朋友圈
@@ -316,8 +350,6 @@ export class App extends Component {
 			},
 			success(dt){
 
-				
-
 				if(dt.getret === 0){
 					
 					/*$.ajax({
@@ -332,44 +364,16 @@ export class App extends Component {
 						}
 					});
 */
-
-				//	s.defaultName = dt.userinfo.nickname || data.username || '智媒体';
-
 					localStorage.setItem('nickname',dt.userinfo.nickname );
 					localStorage.setItem('headimgurl',dt.userinfo.headimgurl);
-
+					s.nickname = dt.userinfo.nickname;
+					s.headimgurl = dt.userinfo.headimgurl;
 					if(wx.posData.longitude){
-							$.ajax({
-					        	url:`http://restapi.amap.com/v3/geocode/regeo?key=10df4af5d9266f83b404c007534f0001&location=${wx.posData.longitude},${wx.posData.latitude}&poitype=&radius=100&extensions=base&batch=false&roadlevel=1`+'',
-								type:'get',
-								success(data){
-									if(data.status === '1' && data.infocode === '10000'){
-										var addressComponent = data.regeocode.addressComponent;
-										var opt = {
-									   		type:'map',
-									   		address:(addressComponent.city[0]||addressComponent.province)+addressComponent.district,
-									   		pos:[wx.posData.longitude,wx.posData.latitude],
-									   		nickname:dt.userinfo.nickname,
-									   		headimgurl:dt.userinfo.headimgurl
-									   	}
-								   		$.ajax({
-											url:'http://api.zmiti.com/v2/msg/send_msg/',
-											data:{
-												type:'publish',
-												content:JSON.stringify(opt),
-												to:opt.to||''
-											},
-											success(data){
-												//console.log(data);
-											}
-										})
-									}
-								}						        	
-					        })
+						s.getPos(dt.userinfo.nickname,dt.userinfo.headimgurl);
 					}
-					 
 				}
 				else{
+					
 					if(s.isWeiXin() ){
 						$.ajax({
 							url:'http://api.zmiti.com/v2/weixin/getoauthurl/',

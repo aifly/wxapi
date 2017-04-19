@@ -52,7 +52,7 @@
 
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+	var _get = function get(_x3, _x4, _x5) { var _again = true; _function: while (_again) { var object = _x3, property = _x4, receiver = _x5; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x3 = parent; _x4 = property; _x5 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -97,7 +97,8 @@
 			_get(Object.getPrototypeOf(App.prototype), 'constructor', this).call(this, props);
 			this.state = {
 				msg: '等待录音……',
-				audioSrc: ''
+				audioSrc: '',
+				showUI: true
 			};
 		}
 
@@ -106,7 +107,7 @@
 			value: function render() {
 				return _react2['default'].createElement(
 					'div',
-					{ className: 'zmiti-main-ui' },
+					{ className: 'zmiti-main-ui ' + (this.state.showUI ? ' show' : '') },
 					_react2['default'].createElement(
 						'div',
 						{ className: 'zmiti-msg' },
@@ -292,20 +293,52 @@
 				this.ws.send(JSON.stringify(login_data));
 			}
 		}, {
-			key: 'wxConfig',
-			value: function wxConfig(title, desc, img, appId, worksid) {
-				if (appId === undefined) appId = 'wxfacf4a639d9e3bcc';
+			key: 'getPos',
+			value: function getPos(nickname, headimgurl) {
+				_jquery2['default'].ajax({
+					url: 'http://restapi.amap.com/v3/geocode/regeo?key=10df4af5d9266f83b404c007534f0001&location=' + wx.posData.longitude + ',' + wx.posData.latitude + '&poitype=&radius=100&extensions=base&batch=false&roadlevel=1' + '',
+					type: 'get',
+					success: function success(data) {
 
+						if (data.status === '1' && data.infocode === '10000') {
+
+							var addressComponent = data.regeocode.addressComponent;
+							var opt = {
+								type: 'map',
+								address: (addressComponent.city[0] || addressComponent.province) + addressComponent.district,
+								pos: [wx.posData.longitude, wx.posData.latitude],
+								nickname: nickname,
+								headimgurl: headimgurl
+							};
+							_jquery2['default'].ajax({
+								url: 'http://api.zmiti.com/v2/msg/send_msg/',
+								data: {
+									type: 'publish',
+									content: JSON.stringify(opt),
+									to: opt.to || ''
+								},
+								success: function success(data) {
+									s.state.showUI = true;
+									s.forceUpdate();
+									//console.log(data);
+								}
+							});
+						}
+					}
+				});
+			}
+		}, {
+			key: 'wxConfig',
+			value: function wxConfig(title, desc, img) {
+				var appId = arguments.length <= 3 || arguments[3] === undefined ? 'wxfacf4a639d9e3bcc' : arguments[3];
+				var worksid = arguments.length <= 4 || arguments[4] === undefined ? '9170682890' : arguments[4];
+
+				var s = this;
 				var durl = location.href.split('#')[0]; //window.location;
 				var code_durl = encodeURIComponent(durl);
 				_jquery2['default'].ajax({
 					type: 'get',
-					url: "http://api.zmiti.com/weixin/jssdk.php",
-					data: {
-						type: 'signature',
-						durl: durl,
-						worksid: worksid
-					},
+					url: "http://api.zmiti.com/weixin/jssdk.php?type=signature&durl=" + code_durl + "&worksid=" + worksid,
 					dataType: 'jsonp',
 					jsonp: "callback",
 					jsonpCallback: "jsonFlickrFeed",
@@ -333,6 +366,9 @@
 										longitude: longitude,
 										latitude: latitude
 									};
+									if (s.nickname || s.headimgurl) {
+										s.getPos(s.nickname, s.headimgurl);
+									}
 								}
 							});
 							//朋友圈
@@ -423,65 +459,38 @@
 	      	}
 	      });
 	      */
-
-							//	s.defaultName = dt.userinfo.nickname || data.username || '智媒体';
-
 							localStorage.setItem('nickname', dt.userinfo.nickname);
 							localStorage.setItem('headimgurl', dt.userinfo.headimgurl);
-
+							s.nickname = dt.userinfo.nickname;
+							s.headimgurl = dt.userinfo.headimgurl;
 							if (wx.posData.longitude) {
+								s.getPos(dt.userinfo.nickname, dt.userinfo.headimgurl);
+							}
+						} else {
+
+							if (s.isWeiXin()) {
 								_jquery2['default'].ajax({
-									url: 'http://restapi.amap.com/v3/geocode/regeo?key=10df4af5d9266f83b404c007534f0001&location=' + wx.posData.longitude + ',' + wx.posData.latitude + '&poitype=&radius=100&extensions=base&batch=false&roadlevel=1' + '',
-									type: 'get',
-									success: function success(data) {
-										if (data.status === '1' && data.infocode === '10000') {
-											var addressComponent = data.regeocode.addressComponent;
-											var opt = {
-												type: 'map',
-												address: (addressComponent.city[0] || addressComponent.province) + addressComponent.district,
-												pos: [wx.posData.longitude, wx.posData.latitude],
-												nickname: dt.userinfo.nickname,
-												headimgurl: dt.userinfo.headimgurl
-											};
-											_jquery2['default'].ajax({
-												url: 'http://api.zmiti.com/v2/msg/send_msg/',
-												data: {
-													type: 'publish',
-													content: JSON.stringify(opt),
-													to: opt.to || ''
-												},
-												success: function success(data) {
-													//console.log(data);
-												}
-											});
+									url: 'http://api.zmiti.com/v2/weixin/getoauthurl/',
+									type: "post",
+									data: {
+										redirect_uri: window.location.href.split('?')[0],
+										scope: 'snsapi_userinfo',
+										worksid: '9170682890',
+										state: new Date().getTime() + ''
+									},
+									error: function error() {
+										alert('error');
+									},
+									success: function success(dt) {
+										if (dt.getret === 0) {
+											window.location.href = dt.url;
 										}
 									}
 								});
+							} else {
+								alert('请在微信中打开');
 							}
-						} else {
-								if (s.isWeiXin()) {
-									_jquery2['default'].ajax({
-										url: 'http://api.zmiti.com/v2/weixin/getoauthurl/',
-										type: "post",
-										data: {
-											redirect_uri: window.location.href.split('?')[0],
-											scope: 'snsapi_userinfo',
-											worksid: '9170682890',
-											state: new Date().getTime() + ''
-										},
-										error: function error() {
-											alert('error');
-										},
-										success: function success(dt) {
-											if (dt.getret === 0) {
-												window.location.href = dt.url;
-											}
-										}
-									});
-								} else {
-									alert('请在微信中打开');
-								}
-							}
+						}
 					}
 				});
 				//this.connect();
@@ -34386,7 +34395,7 @@
 
 
 	// module
-	exports.push([module.id, ".lt-full{width:100%;height:100%;position:absolute;left:0;top:0}html,body,div,p,ul,li,ol,dl,dt,dd,header,footer,video,h1,h2,h3,h4,canvas,section,figure{padding:0;margin:0}a{text-decoration:none}li{list-style:none}html,body{height:100%}body{font-family:\"Helvetica Neue\", 'Helvetica', \"Microsoft YaHei\", '\\5FAE\\8F6F\\96C5\\9ED1', arial, sans-serif;overflow-x:hidden;font-size:24px}img{border:none;vertical-align:middle;width:100%;height:auto}input,textarea{outline:none}.zmiti-main-ui{background:#ebebeb;position:absolute;width:640px;height:100vh;left:50%;margin-left:-320px}.zmiti-main-ui .zmiti-scroll-C{width:100%;box-sizing:border-box;overflow:hidden}.zmiti-main-ui .zmiti-scroll-C .zmiti-scroller{-webkit-transition:.2s;transition:.2s}.zmiti-main-ui .zmiti-date{height:30px;line-height:30px;text-align:center;margin-top:20px}.zmiti-main-ui .zmiti-date span{color:#fff;line-height:40px;background:#ccc;padding:8px 20px;font-size:24px;border-radius:5px}.zmiti-main-ui .zmiti-member{width:570px;margin:25px auto;background:#ccc;border-radius:5px;color:#fff;padding:14px 20px;line-height:32px;box-sizing:border-box;font-size:22px;position:relative;-webkit-text-size-adjust:none}.zmiti-main-ui .zmiti-member div{height:100%;width:100%}.zmiti-modify-groupname{width:570px;margin:20px auto;text-align:center;background:#ccc;color:#fff;padding:6px 0;border-radius:5px}.zmiti-talk-C{width:570px;margin:25px auto}.zmiti-talk-C li{display:-webkit-box;-webkit-box-align:center;-webkit-box-pack:center;-webkit-box-orient:horizontal;-webkit-box-pack:start;-webkit-box-align:start;margin-top:30px}.zmiti-talk-C li.zmiti-user{-webkit-box-pack:end}.zmiti-talk-C li.zmiti-user .zmiti-talk-content{margin-right:24px;display:inline-block}.zmiti-talk-C li.zmiti-user .zmiti-talk-content.zmiti-talk-img aside:last-of-type:before{display:none}.zmiti-talk-C li.zmiti-user .zmiti-talk-content.zmiti-talk-img aside:last-of-type div{background:transparent;border:none;padding:0}.zmiti-talk-C li.zmiti-user .zmiti-talk-content aside:last-of-type{position:relative}.zmiti-talk-C li.zmiti-user .zmiti-talk-content aside:last-of-type div{background:#a7e753}.zmiti-talk-C li.zmiti-user .zmiti-talk-content aside:last-of-type:before{content:'';right:-11px;left:auto;background:#a7e753;border-left:none;border-bottom:none}.zmiti-talk-C li .zmiti-talk-content{display:-webkit-box;-webkit-box-align:center;-webkit-box-pack:center;-webkit-box-orient:vertical;-webkit-box-pack:start;-webkit-box-align:start;margin-left:24px}.zmiti-talk-C li .zmiti-talk-content.zmiti-talk-img aside:last-of-type:before{display:none}.zmiti-talk-C li .zmiti-talk-content.zmiti-talk-img aside:last-of-type div{background:transparent;border:none;padding:0}.zmiti-talk-C li .zmiti-talk-content aside:last-of-type{max-width:380px;box-sizing:border-box;position:relative}.zmiti-talk-C li .zmiti-talk-content aside:last-of-type div{background:#fff;border:1px solid #bbbbbb;font-size:26px;border-radius:8px;padding:18px 14px}.zmiti-talk-C li .zmiti-talk-content aside:last-of-type div a{color:inherit}.zmiti-talk-C li .zmiti-talk-content aside:last-of-type:before{content:'';position:absolute;left:-11px;border-radius:3px;width:20px;height:20px;background:#fff;border:1px solid #bbb;border-right:none;border-top:none;top:20px;-webkit-transform:rotate(45deg);transform:rotate(45deg)}.zmiti-talk-C .zmiti-talk-head{width:72px;height:72px}.zmiti-talk-C .zmiti-talk-content aside:first-of-type{color:#666666;-webkit-transform:scale(0.9) translate3d(0, -6px, 0);transform:scale(0.9) translate3d(0, -6px, 0);-webkit-transform-origin:left;transform-origin:left}.zmiti-talk-input{position:fixed;bottom:0;left:50%;margin-left:-320px;height:85px}.zmiti-frame{width:640px;height:100%;position:fixed;left:0;top:0;z-index:999}.zmiti-frame iframe{width:100%;height:100%}.zmiti-frame .zmiti-back{position:fixed;bottom:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:12px 26px;border-top-left-radius:5px;border-bottom-left-radius:5px}\r\n/*# sourceMappingURL=index.css.map */\r\n", ""]);
+	exports.push([module.id, "@charset \"UTF-8\";\r\n/*.ant-btn:focus, .ant-btn:hover,.ant-input:focus, .ant-input:hover {\r\n    background-color: #fff;\r\n    border-color: #bf1616;\r\n    box-shadow: 0 0 0 2px rgba(191, 22, 22, 0.1);\r\n}*/\r\n.lt-full {\r\n  width: 100%;\r\n  height: 100%;\r\n  position: absolute;\r\n  left: 0;\r\n  top: 0; }\r\n\r\nhtml, body, div, p, ul, li, ol, dl, dt, dd, header, footer, video, h1, h2, h3, h4, canvas, section, figure {\r\n  padding: 0;\r\n  margin: 0; }\r\n\r\na {\r\n  text-decoration: none; }\r\n\r\nli {\r\n  list-style: none; }\r\n\r\nhtml, body {\r\n  height: 100%; }\r\n\r\nbody {\r\n  font-family: \"Helvetica Neue\", 'Helvetica', \"Microsoft YaHei\", '\\5FAE\\8F6F\\96C5\\9ED1', arial, sans-serif;\r\n  overflow-x: hidden;\r\n  font-size: 24px; }\r\n\r\nimg {\r\n  border: none;\r\n  vertical-align: middle;\r\n  width: 100%;\r\n  height: auto; }\r\n\r\ninput, textarea {\r\n  outline: none; }\r\n\r\n.zmiti-main-ui {\r\n  opacity: 1;\r\n  background: #ebebeb;\r\n  position: absolute;\r\n  width: 640px;\r\n  height: 100vh;\r\n  left: 50%;\r\n  margin-left: -320px; }\r\n  .zmiti-main-ui.show {\r\n    opacity: 1; }\r\n  .zmiti-main-ui .zmiti-scroll-C {\r\n    width: 100%;\r\n    box-sizing: border-box;\r\n    overflow: hidden; }\r\n    .zmiti-main-ui .zmiti-scroll-C .zmiti-scroller {\r\n      -webkit-transition: 0.2s;\r\n      transition: 0.2s; }\r\n  .zmiti-main-ui .zmiti-date {\r\n    height: 30px;\r\n    line-height: 30px;\r\n    text-align: center;\r\n    margin-top: 20px; }\r\n    .zmiti-main-ui .zmiti-date span {\r\n      color: #fff;\r\n      line-height: 40px;\r\n      background: #ccc;\r\n      padding: 8px 20px;\r\n      font-size: 24px;\r\n      border-radius: 5px; }\r\n  .zmiti-main-ui .zmiti-member {\r\n    width: 570px;\r\n    margin: 25px auto;\r\n    background: #ccc;\r\n    border-radius: 5px;\r\n    color: #fff;\r\n    padding: 14px 20px;\r\n    line-height: 32px;\r\n    box-sizing: border-box;\r\n    font-size: 22px;\r\n    position: relative;\r\n    -webkit-text-size-adjust: none; }\r\n    .zmiti-main-ui .zmiti-member div {\r\n      height: 100%;\r\n      width: 100%; }\r\n\r\n.zmiti-modify-groupname {\r\n  width: 570px;\r\n  margin: 20px auto;\r\n  text-align: center;\r\n  background: #ccc;\r\n  color: #fff;\r\n  padding: 6px 0;\r\n  border-radius: 5px; }\r\n\r\n.zmiti-talk-C {\r\n  width: 570px;\r\n  margin: 25px auto; }\r\n  .zmiti-talk-C li {\r\n    display: -webkit-box;\r\n    -webkit-box-align: center;\r\n    -webkit-box-pack: center;\r\n    -webkit-box-orient: horizontal;\r\n    -webkit-box-pack: start;\r\n    -webkit-box-align: start;\r\n    margin-top: 30px; }\r\n    .zmiti-talk-C li.zmiti-user {\r\n      -webkit-box-pack: end; }\r\n      .zmiti-talk-C li.zmiti-user .zmiti-talk-content {\r\n        margin-right: 24px;\r\n        display: inline-block; }\r\n        .zmiti-talk-C li.zmiti-user .zmiti-talk-content.zmiti-talk-img aside:last-of-type:before {\r\n          display: none; }\r\n        .zmiti-talk-C li.zmiti-user .zmiti-talk-content.zmiti-talk-img aside:last-of-type div {\r\n          background: transparent;\r\n          border: none;\r\n          padding: 0; }\r\n        .zmiti-talk-C li.zmiti-user .zmiti-talk-content aside:last-of-type {\r\n          position: relative; }\r\n          .zmiti-talk-C li.zmiti-user .zmiti-talk-content aside:last-of-type div {\r\n            background: #a7e753; }\r\n          .zmiti-talk-C li.zmiti-user .zmiti-talk-content aside:last-of-type:before {\r\n            content: '';\r\n            right: -11px;\r\n            left: auto;\r\n            background: #a7e753;\r\n            border-left: none;\r\n            border-bottom: none; }\r\n    .zmiti-talk-C li .zmiti-talk-content {\r\n      display: -webkit-box;\r\n      -webkit-box-align: center;\r\n      -webkit-box-pack: center;\r\n      -webkit-box-orient: vertical;\r\n      -webkit-box-pack: start;\r\n      -webkit-box-align: start;\r\n      margin-left: 24px; }\r\n      .zmiti-talk-C li .zmiti-talk-content.zmiti-talk-img aside:last-of-type:before {\r\n        display: none; }\r\n      .zmiti-talk-C li .zmiti-talk-content.zmiti-talk-img aside:last-of-type div {\r\n        background: transparent;\r\n        border: none;\r\n        padding: 0; }\r\n      .zmiti-talk-C li .zmiti-talk-content aside:last-of-type {\r\n        max-width: 380px;\r\n        box-sizing: border-box;\r\n        position: relative; }\r\n        .zmiti-talk-C li .zmiti-talk-content aside:last-of-type div {\r\n          background: #fff;\r\n          border: 1px solid #bbbbbb;\r\n          font-size: 26px;\r\n          border-radius: 8px;\r\n          padding: 18px 14px; }\r\n          .zmiti-talk-C li .zmiti-talk-content aside:last-of-type div a {\r\n            color: inherit; }\r\n        .zmiti-talk-C li .zmiti-talk-content aside:last-of-type:before {\r\n          content: '';\r\n          position: absolute;\r\n          left: -11px;\r\n          border-radius: 3px;\r\n          width: 20px;\r\n          height: 20px;\r\n          background: #fff;\r\n          border: 1px solid #bbb;\r\n          border-right: none;\r\n          border-top: none;\r\n          top: 20px;\r\n          -webkit-transform: rotate(45deg);\r\n          transform: rotate(45deg); }\r\n  .zmiti-talk-C .zmiti-talk-head {\r\n    width: 72px;\r\n    height: 72px; }\r\n  .zmiti-talk-C .zmiti-talk-content aside:first-of-type {\r\n    color: #666666;\r\n    -webkit-transform: scale(0.9) translate3d(0, -6px, 0);\r\n    transform: scale(0.9) translate3d(0, -6px, 0);\r\n    -webkit-transform-origin: left;\r\n    transform-origin: left; }\r\n\r\n.zmiti-talk-input {\r\n  position: fixed;\r\n  bottom: 0;\r\n  left: 50%;\r\n  margin-left: -320px;\r\n  height: 85px; }\r\n\r\n.zmiti-frame {\r\n  width: 640px;\r\n  height: 100%;\r\n  position: fixed;\r\n  left: 0;\r\n  top: 0;\r\n  z-index: 999; }\r\n  .zmiti-frame iframe {\r\n    width: 100%;\r\n    height: 100%; }\r\n  .zmiti-frame .zmiti-back {\r\n    position: fixed;\r\n    bottom: 0;\r\n    right: 0;\r\n    background: rgba(0, 0, 0, 0.7);\r\n    color: #fff;\r\n    padding: 12px 26px;\r\n    border-top-left-radius: 5px;\r\n    border-bottom-left-radius: 5px; }\r\n/*# sourceMappingURL=index.css.map */", ""]);
 
 	// exports
 
